@@ -22,6 +22,7 @@ import (
 	"github.com/ignotas/spark-operator-apimachinery/api/v1beta2"
 	crdclientset "github.com/ignotas/spark-operator-apimachinery/pkg/client/clientset/versioned"
 	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 type SparkClient interface {
@@ -36,9 +37,19 @@ type sparkClient struct {
 	crdClientSet crdclientset.Interface
 }
 
-func NewSparkClient(kubeClient clientset.Interface, crdClientSet crdclientset.Interface) SparkClient {
+func NewSparkClient(kubeConfig *rest.Config) (SparkClient, error) {
+	crdClientSet, err := crdclientset.NewForConfig(kubeConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	kubeClient, err := clientset.NewForConfig(kubeConfig)
+	if err != nil {
+		return nil, err
+	}
+
 	return &sparkClient{
 		kubeClient:   kubeClient,
 		crdClientSet: crdClientSet,
-	}
+	}, nil
 }
