@@ -269,7 +269,7 @@ func handleLocalDependencies(ctx context.Context, app *v1beta2.SparkApplication,
 	return nil
 }
 
-func (c *sparkClient) CreateSparkApplication(ctx context.Context, app *v1beta2.SparkApplication, DeleteIfExists bool, Namespace string, localDependencies model.LocalDependencies) error {
+func (c *sparkClient) CreateSparkApplication(ctx context.Context, app *v1beta2.SparkApplication, DeleteIfExists bool, Namespace string, localDependencies *model.LocalDependencies) error {
 	if DeleteIfExists {
 		if err := c.DeleteSparkApplication(ctx, Namespace, app.Name); err != nil {
 			return err
@@ -281,8 +281,10 @@ func (c *sparkClient) CreateSparkApplication(ctx context.Context, app *v1beta2.S
 		return err
 	}
 
-	if err := handleLocalDependencies(ctx, app, localDependencies); err != nil {
-		return err
+	if localDependencies != nil {
+		if err := handleLocalDependencies(ctx, app, *localDependencies); err != nil {
+			return err
+		}
 	}
 
 	if hadoopConfDir := os.Getenv("HADOOP_CONF_DIR"); hadoopConfDir != "" {

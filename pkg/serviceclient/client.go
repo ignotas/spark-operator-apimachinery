@@ -29,7 +29,7 @@ import (
 
 type SparkClient interface {
 	ListSparkApplications(ctx context.Context, namespace string) ([]v1beta2.SparkApplication, error)
-	CreateSparkApplication(ctx context.Context, app *v1beta2.SparkApplication, DeleteIfExists bool, Namespace string, localDependencies model.LocalDependencies) error
+	CreateSparkApplication(ctx context.Context, app *v1beta2.SparkApplication, DeleteIfExists bool, Namespace string, localDependencies *model.LocalDependencies) error
 	DeleteSparkApplication(ctx context.Context, Namespace string, name string) error
 	GetApplicationStatus(ctx context.Context, Namespace string, name string) (*v1beta2.SparkApplicationStatus, error)
 }
