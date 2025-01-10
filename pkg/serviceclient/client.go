@@ -19,15 +19,17 @@ package serviceclient
 import (
 	"context"
 
-	"github.com/ignotas/spark-operator-apimachinery/api/v1beta2"
-	crdclientset "github.com/ignotas/spark-operator-apimachinery/pkg/client/clientset/versioned"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+
+	"github.com/ignotas/spark-operator-apimachinery/api/v1beta2"
+	crdclientset "github.com/ignotas/spark-operator-apimachinery/pkg/client/clientset/versioned"
+	"github.com/ignotas/spark-operator-apimachinery/pkg/model"
 )
 
 type SparkClient interface {
 	ListSparkApplications(ctx context.Context, namespace string) ([]v1beta2.SparkApplication, error)
-	CreateSparkApplication(ctx context.Context, app *v1beta2.SparkApplication, DeleteIfExists bool, Namespace string, UploadToPath string, UploadToEndpoint string, UploadToRegion string, S3ForcePathStyle bool, RootPath string, Override bool, Public bool) error
+	CreateSparkApplication(ctx context.Context, app *v1beta2.SparkApplication, DeleteIfExists bool, Namespace string, localDependencies model.LocalDependencies) error
 	DeleteSparkApplication(ctx context.Context, Namespace string, name string) error
 	GetApplicationStatus(ctx context.Context, Namespace string, name string) (*v1beta2.SparkApplicationStatus, error)
 }

@@ -31,18 +31,22 @@ type SparkApplicationResponse struct {
 	State     string `json:"state"`
 }
 
+type LocalDependencies struct {
+	UploadToPath     string `json:"uploadToPath,omitempty"`
+	RootPath         string `json:"rootPath,omitempty"`
+	UploadToRegion   string `json:"uploadToRegion,omitempty"`
+	UploadToEndpoint string `json:"uploadToEndpoint,omitempty"`
+	Public           bool   `json:"public,omitempty"`
+	S3ForcePathStyle bool   `json:"s3ForcePathStyle,omitempty"`
+	Override         bool   `json:"override,omitempty"`
+}
+
 type CreateRequest struct {
-	Namespace        string                       `json:"namespace,omitempty"`
-	DeleteIfExists   bool                         `json:"deleteIfExists,omitempty"`
-	UploadToPath     string                       `json:"uploadToPath,omitempty"`
-	RootPath         string                       `json:"rootPath,omitempty"`
-	UploadToRegion   string                       `json:"uploadToRegion,omitempty"`
-	UploadToEndpoint string                       `json:"uploadToEndpoint,omitempty"`
-	Public           bool                         `json:"public,omitempty"`
-	S3ForcePathStyle bool                         `json:"s3ForcePathStyle,omitempty"`
-	Override         bool                         `json:"override,omitempty"`
-	Metadata         metav1.ObjectMeta            `json:"metadata"`
-	Spec             v1beta2.SparkApplicationSpec `json:"spec"`
+	Namespace         string                       `json:"namespace,omitempty"`
+	DeleteIfExists    bool                         `json:"deleteIfExists,omitempty"`
+	LocalDependencies LocalDependencies            `json:"localDependencies,omitempty"`
+	Metadata          metav1.ObjectMeta            `json:"metadata"`
+	Spec              v1beta2.SparkApplicationSpec `json:"spec"`
 }
 
 type DeleteRequest struct {

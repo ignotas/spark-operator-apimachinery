@@ -8,14 +8,15 @@ import (
 	"path/filepath"
 	"unicode/utf8"
 
+	"github.com/ignotas/spark-operator-apimachinery/api/v1beta2"
+	"github.com/ignotas/spark-operator-apimachinery/pkg/model"
+
 	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
-
-	"github.com/ignotas/spark-operator-apimachinery/api/v1beta2"
 )
 
 type blobHandler interface {
@@ -94,13 +95,13 @@ func (uh uploadHandler) uploadToBucket(uploadPath, localFilePath string, Overrid
 	return fmt.Sprintf("%s://%s/%s", uh.hdpScheme, uh.blobUploadBucket, uploadFilePath), nil
 }
 
-func uploadLocalDependencies(ctx context.Context, app *v1beta2.SparkApplication, files []string, uploadToPath string, UploadToEndpoint string, UploadToRegion string, S3ForcePathStyle bool, RootPath string, Override bool, Public bool) ([]string, error) {
-	if uploadToPath == "" {
+func uploadLocalDependencies(ctx context.Context, app *v1beta2.SparkApplication, files []string, localDependencies model.LocalDependencies) ([]string, error) {
+	if localDependencies.UploadToPath == "" {
 		return nil, fmt.Errorf(
-			"unable to upload local dependencies: no upload location specified via --upload-to")
+			"unable to upload local dependencies: no upload location specified")
 	}
 
-	uploadLocationURL, err := url.Parse(uploadToPath)
+	uploadLocationURL, err := url.Parse(localDependencies.UploadToPath)
 	if err != nil {
 		return nil, err
 	}
@@ -110,11 +111,11 @@ func uploadLocalDependencies(ctx context.Context, app *v1beta2.SparkApplication,
 
 	switch uploadLocationURL.Scheme {
 	case "gs":
-		uh, err = newGCSBlob(ctx, uploadBucket, UploadToEndpoint, UploadToRegion)
+		uh, err = newGCSBlob(ctx, uploadBucket, localDependencies.UploadToEndpoint, localDependencies.UploadToRegion)
 	case "s3":
-		uh, err = newS3Blob(ctx, uploadBucket, UploadToEndpoint, UploadToRegion, S3ForcePathStyle)
+		uh, err = newS3Blob(ctx, uploadBucket, localDependencies.UploadToEndpoint, localDependencies.UploadToRegion, localDependencies.S3ForcePathStyle)
 	default:
-		return nil, fmt.Errorf("unsupported upload location URL scheme: %s", uploadLocationURL.Scheme)
+		return nil, fmt.Errorf("unsupported upload location URL scheme: %s. Supported are gs and s3", uploadLocationURL.Scheme)
 	}
 
 	// Check if bucket has been successfully setup
@@ -123,9 +124,9 @@ func uploadLocalDependencies(ctx context.Context, app *v1beta2.SparkApplication,
 	}
 
 	var uploadedFilePaths []string
-	uploadPath := filepath.Join(RootPath, app.Namespace, app.Name)
+	uploadPath := filepath.Join(localDependencies.RootPath, app.Namespace, app.Name)
 	for _, localFilePath := range files {
-		uploadFilePath, err := uh.uploadToBucket(uploadPath, localFilePath, Override, Public)
+		uploadFilePath, err := uh.uploadToBucket(uploadPath, localFilePath, localDependencies.Override, localDependencies.Public)
 		if err != nil {
 			return nil, err
 		}
@@ -210,7 +211,7 @@ func buildHadoopConfigMap(Namespace string, appName string, hadoopConfDir string
 	return configMap, nil
 }
 
-func handleLocalDependencies(ctx context.Context, app *v1beta2.SparkApplication, uploadToPath string, UploadToEndpoint string, UploadToRegion string, S3ForcePathStyle bool, RootPath string, Override bool, Public bool) error {
+func handleLocalDependencies(ctx context.Context, app *v1beta2.SparkApplication, localDependencies model.LocalDependencies) error {
 	if app.Spec.MainApplicationFile != nil {
 		isMainAppFileLocal, err := isLocalFile(*app.Spec.MainApplicationFile)
 		if err != nil {
@@ -218,7 +219,7 @@ func handleLocalDependencies(ctx context.Context, app *v1beta2.SparkApplication,
 		}
 
 		if isMainAppFileLocal {
-			uploadedMainFile, err := uploadLocalDependencies(ctx, app, []string{*app.Spec.MainApplicationFile}, uploadToPath, UploadToEndpoint, UploadToRegion, S3ForcePathStyle, RootPath, Override, Public)
+			uploadedMainFile, err := uploadLocalDependencies(ctx, app, []string{*app.Spec.MainApplicationFile}, localDependencies)
 			if err != nil {
 				return fmt.Errorf("failed to upload local main application file: %v", err)
 			}
@@ -232,7 +233,7 @@ func handleLocalDependencies(ctx context.Context, app *v1beta2.SparkApplication,
 	}
 
 	if len(localJars) > 0 {
-		uploadedJars, err := uploadLocalDependencies(ctx, app, localJars, uploadToPath, UploadToEndpoint, UploadToRegion, S3ForcePathStyle, RootPath, Override, Public)
+		uploadedJars, err := uploadLocalDependencies(ctx, app, localJars, localDependencies)
 		if err != nil {
 			return fmt.Errorf("failed to upload local jars: %v", err)
 		}
@@ -245,7 +246,7 @@ func handleLocalDependencies(ctx context.Context, app *v1beta2.SparkApplication,
 	}
 
 	if len(localFiles) > 0 {
-		uploadedFiles, err := uploadLocalDependencies(ctx, app, localFiles, uploadToPath, UploadToEndpoint, UploadToRegion, S3ForcePathStyle, RootPath, Override, Public)
+		uploadedFiles, err := uploadLocalDependencies(ctx, app, localFiles, localDependencies)
 		if err != nil {
 			return fmt.Errorf("failed to upload local files: %v", err)
 		}
@@ -258,7 +259,7 @@ func handleLocalDependencies(ctx context.Context, app *v1beta2.SparkApplication,
 	}
 
 	if len(localPyFiles) > 0 {
-		uploadedPyFiles, err := uploadLocalDependencies(ctx, app, localPyFiles, uploadToPath, UploadToEndpoint, UploadToRegion, S3ForcePathStyle, RootPath, Override, Public)
+		uploadedPyFiles, err := uploadLocalDependencies(ctx, app, localPyFiles, localDependencies)
 		if err != nil {
 			return fmt.Errorf("failed to upload local pyfiles: %v", err)
 		}
@@ -268,7 +269,7 @@ func handleLocalDependencies(ctx context.Context, app *v1beta2.SparkApplication,
 	return nil
 }
 
-func (c *sparkClient) CreateSparkApplication(ctx context.Context, app *v1beta2.SparkApplication, DeleteIfExists bool, Namespace string, UploadToPath string, UploadToEndpoint string, UploadToRegion string, S3ForcePathStyle bool, RootPath string, Override bool, Public bool) error {
+func (c *sparkClient) CreateSparkApplication(ctx context.Context, app *v1beta2.SparkApplication, DeleteIfExists bool, Namespace string, localDependencies model.LocalDependencies) error {
 	if DeleteIfExists {
 		if err := c.DeleteSparkApplication(ctx, Namespace, app.Name); err != nil {
 			return err
@@ -280,7 +281,7 @@ func (c *sparkClient) CreateSparkApplication(ctx context.Context, app *v1beta2.S
 		return err
 	}
 
-	if err := handleLocalDependencies(ctx, app, UploadToPath, UploadToEndpoint, UploadToRegion, S3ForcePathStyle, RootPath, Override, Public); err != nil {
+	if err := handleLocalDependencies(ctx, app, localDependencies); err != nil {
 		return err
 	}
 

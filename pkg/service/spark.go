@@ -18,9 +18,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-
 	"github.com/ignotas/spark-operator-apimachinery/api/v1beta2"
 	"github.com/ignotas/spark-operator-apimachinery/pkg/model"
 	"github.com/ignotas/spark-operator-apimachinery/pkg/serviceclient"
@@ -54,8 +51,6 @@ func (s *sparkService) ListApplications(ctx context.Context, req model.ListReque
 	if err != nil {
 		return nil, err
 	}
-	asdf, _ := json.Marshal(apps)
-	fmt.Println(string(asdf))
 	responses := make([]model.SparkApplicationResponse, len(apps))
 	for i, app := range apps {
 		responses[i] = toSparkApplicationResponse(app)
@@ -64,15 +59,12 @@ func (s *sparkService) ListApplications(ctx context.Context, req model.ListReque
 }
 
 func (s *sparkService) CreateApplication(ctx context.Context, req model.CreateRequest) error {
-
 	app := &v1beta2.SparkApplication{
 		ObjectMeta: req.Metadata,
 		Spec:       req.Spec,
 	}
-	asdf, _ := json.Marshal(app)
-	fmt.Println(string(asdf))
 
-	err := s.client.CreateSparkApplication(ctx, app, req.DeleteIfExists, req.Namespace, req.UploadToPath, req.UploadToEndpoint, req.UploadToRegion, req.S3ForcePathStyle, req.RootPath, req.Override, req.Public)
+	err := s.client.CreateSparkApplication(ctx, app, req.DeleteIfExists, req.Namespace, req.LocalDependencies)
 	if err != nil {
 		return err
 	}
