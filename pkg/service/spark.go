@@ -64,7 +64,7 @@ func (s *sparkService) CreateApplication(ctx context.Context, req model.CreateRe
 		Spec:       req.Spec,
 	}
 
-	err := s.client.CreateSparkApplication(ctx, app, req.DeleteIfExists, req.Namespace, req.LocalDependencies)
+	err := s.client.CreateSparkApplication(ctx, app, req.DeleteIfExists, req.Namespace, &req.LocalDependencies)
 	if err != nil {
 		return err
 	}
